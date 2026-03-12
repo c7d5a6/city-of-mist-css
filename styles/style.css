@@ -1,0 +1,113 @@
+:root {
+	--mythos-pink: #4c2b51;
+	--mythos-bright: #be5ad5;
+
+	--mythos-text: #fdfcfb;
+	--mythos-white: #fdfcfb;
+
+	--logos-orange: #984d31;
+	--logos-text: #46362f;
+    --logos-white: #fdfcfb;
+
+	--mist-blue:#28475b;
+	--mist-text:#232b35;
+
+    --extra-grey:#635f56;
+	--extra-text:#3a3632;
+	--extra-white:#b8b6a9;
+
+    --tag-purple: #512b71;
+	--tag-purple-light: #512b7173;
+
+}
+
+.theme-block {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+
+
+.tag .positive-selected {
+    color: white;
+}
+
+div.themebook-name {
+    margin-top: 0;
+}
+
+div.theme-block {
+    border-bottom: none;
+    border-top: none;
+    box-shadow: none;
+}
+
+.locked textarea.theme-name-input {
+    mask-image: url(../images/scrape.png);
+}
+
+div.Mythos-theme {
+    background-image: url(../images/mythcardbg.webp);
+    background-repeat: round;
+    background-size: 100%;
+    background-clip: content-box;
+    background-position-y: top; 
+}
+
+.Mythos-theme div.themebook-name {
+    background: none;
+}
+
+.locked .Mythos-theme .theme-name-input {
+    text-shadow: 0px 0px 16px var(--mythos-bright), 0px 0px 32px var(--mythos-pink), 0px 0px 4px var(--mythos-white);
+    mask-image: none;
+}
+
+div.Logos-theme {
+    background-image: url(../images/logcardbg.webp);
+    background-repeat: round;
+    background-size: 100%;
+    background-clip: content-box;
+    background-position-y: top; 
+}
+
+.Logos-theme div.themebook-name {
+    background: none;
+}
+
+.Logos-theme textarea.theme-name-input {
+    text-shadow: none;
+}
+
+div.Crew-theme, div.Extra-theme {
+    background-image: url(../images/cardbg.webp);
+    background-repeat: round;
+    background-size: 100%;
+    background-clip: content-box;
+    background-position-y: top; 
+}
+
+
+/* ------------------------------------- */
+
+.tag .positive-selected {
+    color: inherit;
+}
+
+.Mythos-theme .tag .positive-selected {
+	background-image: linear-gradient(
+	to right,
+	var(--tag-purple),
+	var(--tag-purple-light),
+	var(--tag-purple)
+	);
+}
+
+.status .positive-selected {
+	background-image: linear-gradient(
+	to right,
+	var(--status-green),
+	var(--status-green-light),
+	var(--status-green)
+	);
+}

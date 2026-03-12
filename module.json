@@ -1,0 +1,31 @@
+{
+  "id": "city-of-mist-css",
+  "title": "City of Mist CSS",
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "authors": [
+    {
+      "name": "c7d5a6",
+      "flags": {}
+    }
+  ],
+  "flags": {
+    "canUpload": true
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "city-of-mist",
+        "type": "system",
+        "compatibility": {}
+      }
+    ]
+  },
+  "description": "",
+  "styles": [
+    "styles/style.css"
+  ]
+}
