@@ -170,11 +170,11 @@ div.Crew-theme, div.Extra-theme {
 	url("../fonts/AveriaSerifLibre-Regular.ttf") format("woff2");
 }
 
-textarea.theme-name-input.borderless:disabled {
-    font-size: 2em;
-}
+/* textarea.theme-name-input.borderless:disabled { */
+/*     font-size: 2em; */
+/* } */
 
-textarea.theme-name-input.borderless:disabled, .tag-add-icons,
+.tag-add-icons,
 div.themebook-motivation-label, div.themebook-identity-label, div.themebook-mystery-label, div.themebook-crew-label, div.themebook-mist-label,
 .section-name, .story-tags-header, .relationship-tag-category h2 {
     font-family: Fira Sans Extra Condensed;
