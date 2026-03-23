@@ -170,9 +170,10 @@ div.Crew-theme, div.Extra-theme {
 	url("../fonts/AveriaSerifLibre-Regular.ttf") format("woff2");
 }
 
-/* textarea.theme-name-input.borderless:disabled { */
+textarea.theme-name-input.borderless:disabled {
 /*     font-size: 2em; */
-/* } */
+    text-wrap: balance;
+}
 
 .tag-add-icons,
 div.themebook-motivation-label, div.themebook-identity-label, div.themebook-mystery-label, div.themebook-crew-label, div.themebook-mist-label,
