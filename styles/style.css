@@ -16,9 +16,17 @@
 	--extra-text:#3a3632;
 	--extra-white:#b8b6a9;
 
-    --tag-purple: #512b71;
-	--tag-purple-light: #512b7173;
+    --options-green: #837970;
+    --options-text: #3a3632;
 
+    --tag-yellow: #fff2ab;
+
+    --tag-purple: #7b4a83;
+
+    --tag-red: #f9d0c4;
+    --tag-red-dark: #852d3a;
+
+    --tag-green: #e2e9b4;
 }
 
 .theme-block {
@@ -26,11 +34,6 @@
     padding-right: 10px;
 }
 
-
-
-.tag .positive-selected {
-    color: white;
-}
 
 div.themebook-name {
     margin-top: 0;
@@ -58,8 +61,15 @@ div.Mythos-theme {
     background: none;
 }
 
+.Mythos-theme .fa-disabled{
+    color: var(--mythos-white);
+}
+
 .locked .Mythos-theme .theme-name-input {
-    text-shadow: 0px 0px 16px var(--mythos-bright), 0px 0px 32px var(--mythos-pink), 0px 0px 4px var(--mythos-white);
+    text-shadow: 
+        0px 0px 8px var(--mythos-bright), 
+        0px 0px 16px var(--mythos-bright), 
+        0px 0px 32px var(--mythos-bright);
     mask-image: none;
 }
 
@@ -92,22 +102,106 @@ div.Crew-theme, div.Extra-theme {
 
 .tag .positive-selected {
     color: inherit;
+    font-weight: bold;
+    background: var(--tag-yellow);
+    background-image: none;
 }
 
 .Mythos-theme .tag .positive-selected {
-	background-image: linear-gradient(
-	to right,
-	var(--tag-purple),
-	var(--tag-purple-light),
-	var(--tag-purple)
-	);
+    background: var(--tag-purple);
 }
 
 .status .positive-selected {
-	background-image: linear-gradient(
-	to right,
-	var(--status-green),
-	var(--status-green-light),
-	var(--status-green)
-	);
+    background: var(--tag-green);
 }
+
+.status .negative-selected, .tag .negative-selected {
+    color: inherit;
+    font-weight: bold;
+    background: var(--tag-red);
+    background-image: none;
+}
+
+.Mythos-theme .tag .negative-selected {
+    background: var(--tag-red-dark);
+}
+
+/* -------------------------------- */
+
+.burn-level-1 {
+    color: var(--tag-red) !important; 
+}
+
+.Mythos-theme .burn-level-1 {
+    color: var(--tag-red-dark) !important; 
+}
+
+/* ---------------------------------------------- */
+
+/* @font-face { */
+/* 	font-family: "Fira Sans Extra Condensed"; */
+/* 	font-style: bold; */
+/* 	font-weight: 900; */
+/* 	src: local(""), */
+/* 	url("../fonts/fira-sans-extra-condensed-900.ttf") format("woff2"); */
+/* } */
+
+@font-face {
+	font-family: "Fira Sans Extra Condensed";
+	font-style: bold;
+	font-weight: 800;
+	src: local(""),
+	url("../fonts/fira-sans-extra-condensed-800.ttf") format("woff2");
+}
+
+@font-face {
+	font-family: "Rock Salt";
+	font-style: normal;
+	font-weight: 500;
+	src: local(""),
+	url("../fonts/RockSalt.ttf") format("woff2");
+}
+
+@font-face {
+	font-family: "Averia Serif Libre";
+	font-style: normal;
+	font-weight: 500;
+	src: local(""),
+	url("../fonts/AveriaSerifLibre-Regular.ttf") format("woff2");
+}
+
+textarea.theme-name-input.borderless:disabled {
+    font-size: 2em;
+}
+
+textarea.theme-name-input.borderless:disabled, .tag-add-icons,
+div.themebook-motivation-label, div.themebook-identity-label, div.themebook-mystery-label, div.themebook-crew-label, div.themebook-mist-label,
+.section-name, .story-tags-header, .relationship-tag-category h2 {
+    font-family: Fira Sans Extra Condensed;
+    font-weight: 800;
+    text-wrap: balance;
+}
+
+.motivation-input{
+    font-family: Rock Salt;
+    font-size: 12px;
+}
+
+.clue-name {
+    font-family: Averia Serif Libre;
+}
+
+.move-text, .move-list, .roll-modifiers {
+    font-family: PT Serif;
+}
+
+section.card-style {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 0px 8px 0 rgba(0, 0, 0, 0.2);
+}
+
+section.clue-data-block {
+    background-image: linear-gradient(to right, #fdf0a8, #fdf0a8AA, #fdf0a8), url(../images/paperbg.webp);
+    border-radius: 6px;
+}
+
+
