@@ -135,12 +135,14 @@ function renderTexts(output, texts) {
   output.style.alignItems = align;
 
   // --- FONT SIZE CALCULATION ---
-  const maxPerItem = clean.length === 1 ? 60 : 80;
-  const minSize = 8;
+  const maxPerItem = clean.length === 1 ? 60 : 100;
+  const minSize = 18;
   const maxTotal = clean.length > 2? 90:80;
 
   const lengths = clean.map(t => t.length);
   const totalLength = lengths.reduce((a, b) => a + b, 0);
+  const longestSegmentLength = Math.max(...lengths);
+  const minLargestFont = Math.ceil((170 / longestSegmentLength) * 2.47);
 
   // inverse proportional weights (shorter → bigger)
   const weights = lengths.map(len => totalLength / len);
@@ -217,6 +219,30 @@ function renderTexts(output, texts) {
     }
   }
 
+  // Ensure largest font is never below the requested formula threshold.
+  const enforceMinLargestFont = (arr, minLargest) => {
+    let largestIdx = 0;
+    for (let i = 1; i < arr.length; i++) {
+      if (arr[i] > arr[largestIdx]) largestIdx = i;
+    }
+
+    if (arr[largestIdx] >= minLargest) return largestIdx;
+
+    let deficit = minLargest - arr[largestIdx];
+    for (let i = 0; i < arr.length && deficit > 0; i++) {
+      if (i === largestIdx) continue;
+      const reducible = Math.max(0, arr[i] - minSize);
+      const delta = Math.min(reducible, deficit);
+      arr[i] -= delta;
+      deficit -= delta;
+    }
+
+    arr[largestIdx] = minLargest - deficit;
+    return largestIdx;
+  };
+
+  const protectedLargestIdx = enforceMinLargestFont(sizes, minLargestFont);
+
   // --- CREATE SPANS ---
   clean.forEach((text, i) => {
     const span = document.createElement('span');
@@ -235,10 +261,11 @@ function renderTexts(output, texts) {
 
     const spans = [...output.children];
 
-    spans.forEach(span => {
+    spans.forEach((span, i) => {
       let fontSize = parseFloat(span.style.fontSize);
+      const localMinSize = i === protectedLargestIdx ? minLargestFont : minSize;
 
-      while (span.scrollWidth > containerWidth && fontSize > minSize) {
+      while (span.scrollWidth > containerWidth && fontSize > localMinSize) {
         fontSize -= 1;
         span.style.fontSize = fontSize + 'px';
       }
