@@ -66,6 +66,7 @@ div.Mythos-theme {
 }
 
 .locked .Mythos-theme .theme-name-input {
+    transform: skew(-6deg);
     text-shadow: 
         0px 0px 8px var(--mythos-bright), 
         0px 0px 16px var(--mythos-bright), 
