@@ -101,7 +101,7 @@ function splitBalancedText(text) {
   }
 
   // Choose better between 2-part and 3-part
-  if (best3 && (bestScore3 < bestScore || best[0].length > 14 || best[1].length > 14)) {
+  if (best3 && (bestScore3 < bestScore || best[0].length > 12 || best[1].length > 12)) {
     return best3;
   }
 
@@ -140,24 +140,67 @@ function renderTexts(output, texts) {
   const maxTotal = clean.length > 2? 90:80;
 
   const lengths = clean.map(t => t.length);
-  const totalLength = lengths.reduce((a, b) => a + b, 0);
-  const longestSegmentLength = Math.max(...lengths);
-  const minLargestFont = Math.ceil((170 / longestSegmentLength) * 2.47);
+  const functionWords = new Set([
+    // articles
+    "a", "an", "the",
+    // common prepositions
+    "of", "in", "on", "at", "to", "for", "from", "by", "with", "without",
+    "over", "under", "into", "onto", "about", "after", "before", "between",
+    "through", "during", "against", "within", "across", "behind", "beyond",
+    // pronouns / determiners often used as short fragments
+    "i", "me", "my", "mine", "you", "your", "yours", "he", "him", "his",
+    "she", "her", "hers", "it", "its", "we", "us", "our", "ours", "they",
+    "them", "their", "theirs", "this", "that", "these", "those"
+  ]);
+  const isFunctionWordOnlySegment = (text) => {
+    const tokens = text.toLowerCase().match(/[a-z']+/g) || [];
+    if (tokens.length === 0) return false;
+    return tokens.every(token => functionWords.has(token));
+  };
+  const lockedToMinSize = clean.map(isFunctionWordOnlySegment);
+  const unlockedIndices = lengths
+    .map((_, i) => i)
+    .filter(i => !lockedToMinSize[i]);
+  const lockedCount = lockedToMinSize.filter(Boolean).length;
+  const lockedBudget = lockedCount * minSize;
+  const remainingBudget = Math.max(0, maxTotal - lockedBudget);
+  const unlockedLengths = unlockedIndices.map(i => lengths[i]);
+  const unlockedTotalLength = unlockedLengths.reduce((a, b) => a + b, 0);
+  const perSegmentMax = lengths.map(len => Math.ceil((180 / len) * 2.47));
+  const maxForIndex = (idx) => Math.min(maxPerItem, perSegmentMax[idx]);
+  const longestUnlockedLength = unlockedLengths.length > 0
+    ? Math.max(...unlockedLengths)
+    : 1;
+  const minLargestFont = Math.ceil((170 / longestUnlockedLength) * 2.47);
 
-  // inverse proportional weights (shorter → bigger)
-  const weights = lengths.map(len => totalLength / len);
-  const weightSum = weights.reduce((a, b) => a + b, 0);
+  // Start with locked segments fixed at min size.
+  let sizes = clean.map((_, i) => (lockedToMinSize[i] ? minSize : 0));
 
-  let sizes = weights.map(w => (w / weightSum) * maxTotal);
+  if (unlockedIndices.length > 0 && remainingBudget > 0) {
+    // inverse proportional weights (shorter unlocked segment -> bigger)
+    const weights = unlockedLengths.map(len => unlockedTotalLength / len);
+    const weightSum = weights.reduce((a, b) => a + b, 0);
+    const unlockedSizes = weights.map(w => (w / weightSum) * remainingBudget);
 
-  // clamp to min/max
-  sizes = sizes.map(s => Math.max(minSize, Math.min(maxPerItem, s)));
+    // clamp unlocked segment sizes
+    for (let i = 0; i < unlockedSizes.length; i++) {
+      const globalIdx = unlockedIndices[i];
+      unlockedSizes[i] = Math.max(minSize, Math.min(maxForIndex(globalIdx), unlockedSizes[i]));
+    }
 
-  // normalize again if we exceeded total
-  let sizeSum = sizes.reduce((a, b) => a + b, 0);
-  if (sizeSum > maxTotal) {
-    const scale = maxTotal / sizeSum;
-    sizes = sizes.map(s => s * scale);
+    // normalize unlocked sizes if they exceed remaining budget
+    let unlockedSum = unlockedSizes.reduce((a, b) => a + b, 0);
+    if (unlockedSum > remainingBudget && unlockedSum > 0) {
+      const scale = remainingBudget / unlockedSum;
+      for (let i = 0; i < unlockedSizes.length; i++) {
+        unlockedSizes[i] *= scale;
+      }
+    }
+
+    // Move unlocked sizes back into global size array.
+    for (let i = 0; i < unlockedIndices.length; i++) {
+      sizes[unlockedIndices[i]] = unlockedSizes[i];
+    }
   }
 
   // Ensure visual contrast between split parts:
@@ -168,20 +211,30 @@ function renderTexts(output, texts) {
     const pairTotal = arr[bigIdx] + arr[smallIdx];
     let small = pairTotal / (1 + MIN_RATIO);
     let big = pairTotal - small;
+    const maxBig = maxForIndex(bigIdx);
+    const maxSmall = maxForIndex(smallIdx);
 
     // Respect min/max bounds while preserving pair total.
-    if (big > maxPerItem) {
-      big = maxPerItem;
+    if (big > maxBig) {
+      big = maxBig;
       small = pairTotal - big;
+    }
+    if (small > maxSmall) {
+      small = maxSmall;
+      big = pairTotal - small;
     }
     if (small < minSize) {
       small = minSize;
       big = pairTotal - small;
     }
+    if (big < minSize) {
+      big = minSize;
+      small = pairTotal - big;
+    }
 
     // Final guard for bounds.
-    small = Math.max(minSize, Math.min(maxPerItem, small));
-    big = Math.max(minSize, Math.min(maxPerItem, big));
+    small = Math.max(minSize, Math.min(maxSmall, small));
+    big = Math.max(minSize, Math.min(maxBig, big));
 
     arr[bigIdx] = big;
     arr[smallIdx] = small;
@@ -189,17 +242,21 @@ function renderTexts(output, texts) {
 
   const ratio = (a, b) => (a > b ? a / b : b / a);
 
-  if (sizes.length === 2) {
-    const bigIdx = sizes[0] >= sizes[1] ? 0 : 1;
-    const smallIdx = bigIdx === 0 ? 1 : 0;
-    if (ratio(sizes[0], sizes[1]) < MIN_RATIO) {
-      enforceRatioWithinPair(sizes, bigIdx, smallIdx);
+  if (unlockedIndices.length === 2) {
+    const a = unlockedIndices[0];
+    const b = unlockedIndices[1];
+    const bigIdx = sizes[a] >= sizes[b] ? a : b;
+    const resolvedSmallIdx = bigIdx === a ? b : a;
+    if (ratio(sizes[a], sizes[b]) < MIN_RATIO) {
+      enforceRatioWithinPair(sizes, bigIdx, resolvedSmallIdx);
     }
-  } else if (sizes.length >= 3) {
+  } else if (unlockedIndices.length >= 3) {
     let hasPairWithMinRatio = false;
-    for (let i = 0; i < sizes.length && !hasPairWithMinRatio; i++) {
-      for (let j = i + 1; j < sizes.length; j++) {
-        if (ratio(sizes[i], sizes[j]) >= MIN_RATIO) {
+    for (let i = 0; i < unlockedIndices.length && !hasPairWithMinRatio; i++) {
+      for (let j = i + 1; j < unlockedIndices.length; j++) {
+        const idxI = unlockedIndices[i];
+        const idxJ = unlockedIndices[j];
+        if (ratio(sizes[idxI], sizes[idxJ]) >= MIN_RATIO) {
           hasPairWithMinRatio = true;
           break;
         }
@@ -207,11 +264,12 @@ function renderTexts(output, texts) {
     }
 
     if (!hasPairWithMinRatio) {
-      let bigIdx = 0;
-      let smallIdx = 0;
-      for (let i = 1; i < sizes.length; i++) {
-        if (sizes[i] > sizes[bigIdx]) bigIdx = i;
-        if (sizes[i] < sizes[smallIdx]) smallIdx = i;
+      let bigIdx = unlockedIndices[0];
+      let smallIdx = unlockedIndices[0];
+      for (let i = 1; i < unlockedIndices.length; i++) {
+        const idx = unlockedIndices[i];
+        if (sizes[idx] > sizes[bigIdx]) bigIdx = idx;
+        if (sizes[idx] < sizes[smallIdx]) smallIdx = idx;
       }
       if (bigIdx !== smallIdx) {
         enforceRatioWithinPair(sizes, bigIdx, smallIdx);
@@ -219,29 +277,42 @@ function renderTexts(output, texts) {
     }
   }
 
-  // Ensure largest font is never below the requested formula threshold.
-  const enforceMinLargestFont = (arr, minLargest) => {
-    let largestIdx = 0;
-    for (let i = 1; i < arr.length; i++) {
-      if (arr[i] > arr[largestIdx]) largestIdx = i;
+  // Keep locked segments fixed at minimum after all unlocked math.
+  for (let i = 0; i < sizes.length; i++) {
+    if (lockedToMinSize[i]) {
+      sizes[i] = minSize;
+    }
+  }
+
+  // Ensure largest non-function segment is never below formula threshold.
+  const enforceMinLargestFont = (arr, minLargest, eligibleIndices) => {
+    if (eligibleIndices.length === 0) return -1;
+    let largestIdx = eligibleIndices[0];
+    for (let i = 1; i < eligibleIndices.length; i++) {
+      const idx = eligibleIndices[i];
+      if (arr[idx] > arr[largestIdx]) largestIdx = idx;
     }
 
     if (arr[largestIdx] >= minLargest) return largestIdx;
 
     let deficit = minLargest - arr[largestIdx];
     for (let i = 0; i < arr.length && deficit > 0; i++) {
-      if (i === largestIdx) continue;
+      if (i === largestIdx || lockedToMinSize[i]) continue;
       const reducible = Math.max(0, arr[i] - minSize);
       const delta = Math.min(reducible, deficit);
       arr[i] -= delta;
       deficit -= delta;
     }
 
-    arr[largestIdx] = minLargest - deficit;
+    arr[largestIdx] = Math.min(maxForIndex(largestIdx), minLargest - deficit);
     return largestIdx;
   };
 
-  const protectedLargestIdx = enforceMinLargestFont(sizes, minLargestFont);
+  const protectedLargestIdx = enforceMinLargestFont(
+    sizes,
+    minLargestFont,
+    unlockedIndices
+  );
 
   // --- CREATE SPANS ---
   clean.forEach((text, i) => {
@@ -263,7 +334,9 @@ function renderTexts(output, texts) {
 
     spans.forEach((span, i) => {
       let fontSize = parseFloat(span.style.fontSize);
-      const localMinSize = i === protectedLargestIdx ? minLargestFont : minSize;
+      const localMinSize = lockedToMinSize[i]
+        ? minSize
+        : (i === protectedLargestIdx ? minLargestFont : minSize);
 
       while (span.scrollWidth > containerWidth && fontSize > localMinSize) {
         fontSize -= 1;
