@@ -27,5 +27,8 @@
   "description": "",
   "styles": [
     "styles/style.css"
+  ],
+  "scripts": [
+    "scripts/renderThemeName.js"
   ]
 }

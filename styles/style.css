@@ -45,7 +45,7 @@ div.theme-block {
     box-shadow: none;
 }
 
-.locked textarea.theme-name-input {
+.locked .theme-name-input {
     mask-image: url(../images/scrape.png);
 }
 
@@ -86,7 +86,7 @@ div.Logos-theme {
     background: none;
 }
 
-.Logos-theme textarea.theme-name-input {
+.Logos-theme .theme-name-input {
     text-shadow: none;
 }
 
@@ -171,9 +171,22 @@ div.Crew-theme, div.Extra-theme {
 	url("../fonts/AveriaSerifLibre-Regular.ttf") format("woff2");
 }
 
-textarea.theme-name-input.borderless:disabled {
+.theme-name-input.borderless {
 /*     font-size: 2em; */
     text-wrap: balance;
+    font-weight: bold;
+    font-family: Rift Bold;
+    text-transform: uppercase;
+    word-break: break-word;
+    border: none;
+    height: auto;
+    line-height: 0.80;
+    margin-bottom: 12px;
+}
+
+.theme-title {
+    padding-left: 6px;
+    padding-right: 6px;
 }
 
 .tag-add-icons,
