@@ -41,12 +41,6 @@ async function applyVibrantBackgroundFromProfileImage(root) {
     return;
   }
 
-  const parent = img.parentElement;
-  if (!parent) {
-    console.debug(LOG_PREFIX, "profile image has no parent element");
-    return;
-  }
-
   try {
     const src = img.currentSrc || img.src;
     console.debug(LOG_PREFIX, "profile image found", {
@@ -59,8 +53,6 @@ async function applyVibrantBackgroundFromProfileImage(root) {
       console.debug(LOG_PREFIX, "sheet underlay colors not resolved");
       return;
     }
-
-    parent.style.backgroundColor = colors.vibrant.hex;
 
     const actor = root.closest(".actor") || root.querySelector(".actor");
     if (actor) {
@@ -467,44 +459,46 @@ Hooks.on("renderCityCharacterSheet", (app, html) => {
     actorName: app.actor?.name
   });
 
-  html.find("textarea.theme-name-input:disabled").each((_, textarea) => {
-    const $ta = $(textarea);
+  queueMicrotask(() => {
+    html.find("textarea.theme-name-input:disabled").each((_, textarea) => {
+      const $ta = $(textarea);
 
-    // Avoid duplicating if sheet re-renders
-    const existing = $ta.siblings(".theme-name-rendered");
-    if (existing.length) existing.remove();
+      // Avoid duplicating if sheet re-renders
+      const existing = $ta.siblings(".theme-name-rendered");
+      if (existing.length) existing.remove();
 
-    const rawText = ($ta.val() ?? "").toString().trim();
-    const parts = splitBalancedText(rawText);
-    console.debug(LOG_PREFIX, "rendering locked theme name", {
-      rawText,
-      partsCount: parts.length
+      const rawText = ($ta.val() ?? "").toString().trim();
+      const parts = splitBalancedText(rawText);
+      console.debug(LOG_PREFIX, "rendering locked theme name", {
+        rawText,
+        partsCount: parts.length
+      });
+
+      // Keep original element in DOM for form consistency, but hide it
+      $ta.css("display", "none");
+
+      // Inject replacement display node with same core classes
+      const $display = $(
+        `<div class="theme-name-rendered theme-name-input borderless"></div>`
+      );
+
+      // Mirror textarea-like layout behavior
+      $display.css({
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        minHeight: $ta.outerHeight() + "px",
+        whiteSpace: "normal",
+        overflowWrap: "anywhere",
+        pointerEvents: "none" // locked visual only
+      });
+
+      // Render with your existing function
+      renderTexts($display[0], parts);
+
+      // Put it right after textarea
+      $ta.after($display);
     });
-
-    // Keep original element in DOM for form consistency, but hide it
-    $ta.css("display", "none");
-
-    // Inject replacement display node with same core classes
-    const $display = $(
-      `<div class="theme-name-rendered theme-name-input borderless"></div>`
-    );
-
-    // Mirror textarea-like layout behavior
-    $display.css({
-      display: "flex",
-      flexDirection: "column",
-      width: "100%",
-      minHeight: $ta.outerHeight() + "px",
-      whiteSpace: "normal",
-      overflowWrap: "anywhere",
-      pointerEvents: "none" // locked visual only
-    });
-
-    // Render with your existing function
-    renderTexts($display[0], parts);
-
-    // Put it right after textarea
-    $ta.after($display);
   });
 
   queueMicrotask(() => {
