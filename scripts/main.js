@@ -773,97 +773,8 @@ var init_manager = __esm({
 init_pipeline();
 init_pipeline();
 init_color();
-var TARGETS = [
-  { role: "Vibrant", targetL: 0.65, minL: 0.4, maxL: 0.85, targetC: 0.2, minC: 0.08 },
-  { role: "Muted", targetL: 0.65, minL: 0.4, maxL: 0.85, targetC: 0.04, minC: 0 },
-  { role: "DarkVibrant", targetL: 0.3, minL: 0, maxL: 0.45, targetC: 0.2, minC: 0.08 },
-  { role: "DarkMuted", targetL: 0.3, minL: 0, maxL: 0.45, targetC: 0.04, minC: 0 },
-  { role: "LightVibrant", targetL: 0.85, minL: 0.7, maxL: 1, targetC: 0.2, minC: 0.08 },
-  { role: "LightMuted", targetL: 0.85, minL: 0.7, maxL: 1, targetC: 0.04, minC: 0 }
-];
-var WEIGHT_L = 6;
-var WEIGHT_C = 3;
-var WEIGHT_POP = 1;
-function score(color, target, maxPopulation) {
-  const { l, c } = color.oklch();
-  if (l < target.minL || l > target.maxL) return -Infinity;
-  if (c < target.minC) return -Infinity;
-  const lDist = 1 - Math.abs(l - target.targetL);
-  const cDist = 1 - Math.min(Math.abs(c - target.targetC) / 0.2, 1);
-  const pop = maxPopulation > 0 ? color.population / maxPopulation : 0;
-  return lDist * WEIGHT_L + cDist * WEIGHT_C + pop * WEIGHT_POP;
-}
 var WHITE = createColor(255, 255, 255, 0);
 var BLACK = createColor(0, 0, 0, 0);
-function textColors(color) {
-  return {
-    title: color.isDark ? WHITE : BLACK,
-    body: color.isDark ? WHITE : BLACK
-  };
-}
-function classifySwatches(palette) {
-  const maxPopulation = Math.max(...palette.map((c) => c.population), 1);
-  const assignments = [];
-  for (const target of TARGETS) {
-    let bestColor = null;
-    let bestScore = -Infinity;
-    for (const color of palette) {
-      const s = score(color, target, maxPopulation);
-      if (s > bestScore) {
-        bestScore = s;
-        bestColor = color;
-      }
-    }
-    if (bestColor && bestScore > -Infinity) {
-      assignments.push({ role: target.role, color: bestColor, score: bestScore });
-    }
-  }
-  const used = /* @__PURE__ */ new Set();
-  const result = {};
-  assignments.sort((a, b) => b.score - a.score);
-  for (const assignment of assignments) {
-    if (used.has(assignment.color)) {
-      const target = TARGETS.find((t) => t.role === assignment.role);
-      let fallback = null;
-      let fallbackScore = -Infinity;
-      for (const color of palette) {
-        if (used.has(color)) continue;
-        const s = score(color, target, maxPopulation);
-        if (s > fallbackScore) {
-          fallbackScore = s;
-          fallback = color;
-        }
-      }
-      if (fallback && fallbackScore > -Infinity) {
-        used.add(fallback);
-        const { title, body } = textColors(fallback);
-        result[assignment.role] = {
-          color: fallback,
-          role: assignment.role,
-          titleTextColor: title,
-          bodyTextColor: body
-        };
-      } else {
-        result[assignment.role] = null;
-      }
-    } else {
-      used.add(assignment.color);
-      const { title, body } = textColors(assignment.color);
-      result[assignment.role] = {
-        color: assignment.color,
-        role: assignment.role,
-        titleTextColor: title,
-        bodyTextColor: body
-      };
-    }
-  }
-  for (const target of TARGETS) {
-    if (!(target.role in result)) {
-      result[target.role] = null;
-    }
-  }
-  return result;
-}
 var SIGBITS = 5;
 var RSHIFT = 8 - SIGBITS;
 var MAX_ITERATIONS = 1e3;
@@ -1222,13 +1133,6 @@ async function getPalette(source, options) {
     quantizer
   );
 }
-async function getSwatches(source, options) {
-  const palette = await getPalette(source, {
-    colorCount: 16,
-    ...options
-  });
-  return classifySwatches(palette ?? []);
-}
 init_browser();
 init_pipeline();
 var loader = new BrowserPixelLoader();
@@ -1236,11 +1140,33 @@ var defaultQuantizer = new MmcqQuantizer();
 init_color();
 
 // src/main.js
+var PALETTE_COLOR_COUNT = 8;
+var PALETTE_SAMPLE_QUALITY = 1;
+var DARK_COLOR_LUMINANCE_THRESHOLD = 0.051;
+var LIGHT_COLOR_LUMINANCE_THRESHOLD = 0.2;
+var UNDERLAY_CAP_RGB = [38, 22, 38];
+var VIBRANT_FLOOR_RGB = [164, 65, 70];
+var BRAND_PURPLE_RGB = [76, 43, 81];
+var DARK_MUTED_FALLBACK = {
+  hex: "#261626",
+  rgb: [38, 22, 38],
+  textColor: "#ffffff",
+  proportion: 1
+};
+var LIGHT_VIVID_FALLBACK = {
+  hex: "#e8e0dc",
+  rgb: [232, 224, 220],
+  textColor: "#000000",
+  proportion: 1
+};
+function mergeSampleOpts(extractionOptions = {}) {
+  return { quality: PALETTE_SAMPLE_QUALITY, ...extractionOptions };
+}
 function dummyFunction() {
   return "dummy";
 }
-async function getDominantColorFromImage(imgElement) {
-  return getColor(imgElement);
+async function getDominantColorFromImage(imgElement, extractionOptions = {}) {
+  return getColor(imgElement, mergeSampleOpts(extractionOptions));
 }
 function loadImageFromUrl(url) {
   return new Promise((resolve, reject) => {
@@ -1251,38 +1177,135 @@ function loadImageFromUrl(url) {
     img.src = url;
   });
 }
-async function getVibrantColorFromImageUrl(imageUrl) {
-  const img = await loadImageFromUrl(imageUrl);
-  const swatches = await getSwatches(img);
-  const vibrant = swatches.Vibrant?.color ?? swatches.LightVibrant?.color;
-  if (vibrant) {
-    return {
-      hex: vibrant.hex(),
-      rgb: vibrant.array(),
-      textColor: vibrant.textColor
-    };
-  }
-  const dominant = await getColor(img);
-  return {
-    hex: dominant.hex(),
-    rgb: dominant.array(),
-    textColor: dominant.textColor
-  };
-}
 function toColorPayload(color) {
   return {
     hex: color.hex(),
     rgb: color.array(),
-    textColor: color.textColor
+    textColor: color.textColor,
+    proportion: color.proportion
   };
 }
-function rgbToHsv([r, g, b]) {
+async function extractPaletteFromImage(source, extractionOptions = {}) {
+  const palette = await getPalette(source, {
+    ...mergeSampleOpts(extractionOptions),
+    colorCount: PALETTE_COLOR_COUNT
+  });
+  if (!palette?.length) return [];
+  return palette.map(toColorPayload);
+}
+async function extractPaletteWithFallback(source, extractionOptions = {}) {
+  let palette = await extractPaletteFromImage(source, extractionOptions);
+  if (!palette.length) {
+    const dominant = await getColor(source, mergeSampleOpts(extractionOptions));
+    if (dominant) palette = [toColorPayload(dominant)];
+  }
+  return palette;
+}
+function relativeLuminance2([r, g, b]) {
+  const lin = (c) => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+function uniquePaletteByHex(palette) {
+  const seen = /* @__PURE__ */ new Set();
+  return palette.filter((p) => {
+    const key = p.hex.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function splitDarkLightFromPalette(palette) {
+  const unique = uniquePaletteByHex(palette);
+  return {
+    darks: unique.filter(
+      (p) => relativeLuminance2(p.rgb) <= LIGHT_COLOR_LUMINANCE_THRESHOLD
+    ),
+    lights: unique.filter(
+      (p) => relativeLuminance2(p.rgb) > DARK_COLOR_LUMINANCE_THRESHOLD
+    )
+  };
+}
+function getDarkColorsFromPalette(palette) {
+  if (!palette?.length) return [];
+  const { darks } = splitDarkLightFromPalette(palette);
+  return [...darks].sort(
+    (a, b) => relativeLuminance2(a.rgb) - relativeLuminance2(b.rgb)
+  );
+}
+function getLightColorsFromPalette(palette) {
+  if (!palette?.length) return [];
+  const { lights } = splitDarkLightFromPalette(palette);
+  return [...lights].sort(
+    (a, b) => relativeLuminance2(b.rgb) - relativeLuminance2(a.rgb)
+  );
+}
+function rgbChromaCoords([r, g, b]) {
   const rn = r / 255;
   const gn = g / 255;
   const bn = b / 255;
   const max = Math.max(rn, gn, bn);
   const min = Math.min(rn, gn, bn);
-  const delta = max - min;
+  return { rn, gn, bn, max, min, chroma: max - min };
+}
+function rgbToHsl2(rgb) {
+  const { rn, gn, bn, max, min, chroma: d } = rgbChromaCoords(rgb);
+  const l = (max + min) / 2;
+  let h = 0;
+  if (d !== 0) {
+    if (max === rn) h = 60 * ((gn - bn) / d % 6);
+    else if (max === gn) h = 60 * ((bn - rn) / d + 2);
+    else h = 60 * ((rn - gn) / d + 4);
+  }
+  if (h < 0) h += 360;
+  const denom = 1 - Math.abs(2 * l - 1);
+  const s = denom === 0 || d === 0 ? 0 : d / denom;
+  return { h, s, l };
+}
+var BRAND_HSL = rgbToHsl2(BRAND_PURPLE_RGB);
+function hueDistanceDegrees(h1, h2) {
+  const diff = Math.abs(h1 - h2) % 360;
+  return Math.min(diff, 360 - diff) / 360;
+}
+function rateDarkLightPair(darkPayload, lightPayload) {
+  const hslDark = rgbToHsl2(darkPayload.rgb);
+  const hslLight = rgbToHsl2(lightPayload.rgb);
+  if (hslLight.l < hslDark.l) return 0;
+  const satLightSqrt = Math.sqrt(hslLight.s);
+  const lLightSqrt = Math.sqrt(hslLight.l);
+  const hueDarkBrand = hueDistanceDegrees(hslDark.h, BRAND_HSL.h);
+  const hueDarkLight = hueDistanceDegrees(hslDark.h, hslLight.h);
+  const hueTerm = Math.sqrt(hueDarkBrand ** 2 + hueDarkLight ** 2);
+  const valueDist = Math.sqrt(Math.abs(hslLight.l - hslDark.l));
+  const hslCore = satLightSqrt * hueTerm * Math.sqrt(valueDist * lLightSqrt);
+  const pctDark = darkPayload.proportion ?? 1;
+  const pctLight = lightPayload.proportion ?? 1;
+  return hslCore * pctDark * Math.sqrt(pctLight);
+}
+async function getBestDarkLightPairFromImage(source, extractionOptions = {}) {
+  const palette = await extractPaletteWithFallback(source, extractionOptions);
+  let { darks, lights } = splitDarkLightFromPalette(palette);
+  if (darks.length === 0) darks = [DARK_MUTED_FALLBACK];
+  if (lights.length === 0) lights = [LIGHT_VIVID_FALLBACK];
+  let bestDark = darks[0];
+  let bestLight = lights[0];
+  let bestRating = rateDarkLightPair(bestDark, bestLight);
+  for (const d of darks) {
+    for (const l of lights) {
+      const rating = rateDarkLightPair(d, l);
+      if (rating > bestRating) {
+        bestRating = rating;
+        bestDark = d;
+        bestLight = l;
+      }
+    }
+  }
+  return { dark: bestDark, light: bestLight, rating: bestRating, palette };
+}
+function rgbToHsv(rgb) {
+  const { rn, gn, bn, max, min, chroma: delta } = rgbChromaCoords(rgb);
   let h = 0;
   if (delta !== 0) {
     if (max === rn) h = (gn - bn) / delta % 6;
@@ -1294,6 +1317,14 @@ function rgbToHsv([r, g, b]) {
   const s = max === 0 ? 0 : delta / max;
   const v = max;
   return { h, s, v };
+}
+async function bestPairFromImageUrl(imageUrl) {
+  const img = await loadImageFromUrl(imageUrl);
+  return getBestDarkLightPairFromImage(img);
+}
+async function getVibrantColorFromImageUrl(imageUrl) {
+  const { light } = await bestPairFromImageUrl(imageUrl);
+  return clampActorVibrantValue(light);
 }
 function hsvToRgb({ h, s, v }) {
   const c = v * s;
@@ -1317,50 +1348,46 @@ function hsvToRgb({ h, s, v }) {
 function rgbToHex([r, g, b]) {
   return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
-function getReadableTextColor([r, g, b]) {
-  const relativeLuminance2 = (channel) => {
-    const s = channel / 255;
-    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+function getReadableTextColor(rgb) {
+  return relativeLuminance2(rgb) > DARK_COLOR_LUMINANCE_THRESHOLD ? "#000000" : "#ffffff";
+}
+function payloadFromClampedRgb(rgb) {
+  return {
+    hex: rgbToHex(rgb),
+    rgb,
+    textColor: getReadableTextColor(rgb)
   };
-  const l = 0.2126 * relativeLuminance2(r) + 0.7152 * relativeLuminance2(g) + 0.0722 * relativeLuminance2(b);
-  return l > 0.179 ? "#000000" : "#ffffff";
+}
+function clampHsvValue(colorPayload, refRgb, ceiling) {
+  const limit = rgbToHsv(refRgb).v;
+  const hsv = rgbToHsv(colorPayload.rgb);
+  const nextV = ceiling ? Math.min(hsv.v, limit) : Math.max(hsv.v, limit);
+  if (nextV === hsv.v) return colorPayload;
+  return payloadFromClampedRgb(hsvToRgb({ ...hsv, v: nextV }));
 }
 function clampActorUnderlayValue(colorPayload) {
-  const maxValue = rgbToHsv([38, 22, 38]).v;
-  const hsv = rgbToHsv(colorPayload.rgb);
-  if (hsv.v <= maxValue) return colorPayload;
-  const clampedRgb = hsvToRgb({ ...hsv, v: maxValue });
-  return {
-    hex: rgbToHex(clampedRgb),
-    rgb: clampedRgb,
-    textColor: getReadableTextColor(clampedRgb)
-  };
+  return clampHsvValue(colorPayload, UNDERLAY_CAP_RGB, true);
 }
-var DARK_MUTED_FALLBACK = {
-  hex: "#261626",
-  rgb: [38, 22, 38],
-  textColor: "#ffffff"
-};
-function hasValidColorPayload(payload) {
-  return Boolean(
-    payload && typeof payload.hex === "string" && payload.hex.trim() !== "" && Array.isArray(payload.rgb) && payload.rgb.length === 3 && payload.rgb.every((channel) => Number.isFinite(channel))
-  );
+function clampActorVibrantValue(colorPayload) {
+  return clampHsvValue(colorPayload, VIBRANT_FLOOR_RGB, false);
 }
 async function getSheetUnderlayColorsFromImageUrl(imageUrl) {
-  const img = await loadImageFromUrl(imageUrl);
-  const swatches = await getSwatches(img);
-  const dominant = await getColor(img);
-  const vibrantColor = swatches.Vibrant?.color ?? swatches.LightVibrant?.color ?? swatches.Muted?.color ?? dominant;
-  const darkMutedPayload = swatches.DarkMuted?.color ? toColorPayload(swatches.DarkMuted.color) : null;
-  const darkMuted = hasValidColorPayload(darkMutedPayload) ? clampActorUnderlayValue(darkMutedPayload) : DARK_MUTED_FALLBACK;
+  const { dark, light } = await bestPairFromImageUrl(imageUrl);
   return {
-    vibrant: toColorPayload(vibrantColor),
-    darkMuted
+    vibrant: clampActorVibrantValue(light),
+    darkMuted: clampActorUnderlayValue(dark)
   };
 }
 export {
+  clampActorUnderlayValue,
+  clampActorVibrantValue,
   dummyFunction,
+  extractPaletteFromImage,
+  getBestDarkLightPairFromImage,
+  getDarkColorsFromPalette,
   getDominantColorFromImage,
+  getLightColorsFromPalette,
   getSheetUnderlayColorsFromImageUrl,
-  getVibrantColorFromImageUrl
+  getVibrantColorFromImageUrl,
+  rateDarkLightPair
 };

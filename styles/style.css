@@ -219,6 +219,26 @@ section.clue-data-block {
     border-radius: 6px;
 }
 
+section.juice-data-block {
+	background: linear-gradient(
+			to right,
+			color-mix(in srgb, var(--actor-underlay) 15%, transparent),
+			color-mix(in srgb, var(--actor-underlay) 8%, transparent),
+			color-mix(in srgb, var(--actor-underlay) 35%, transparent)
+		),
+		url(../images/paperbg.webp);
+}
+
+section.cluejournal-data-block {
+	background: linear-gradient(
+			to right,
+			color-mix(in srgb, var(--actor-underlay) 15%, transparent),
+			color-mix(in srgb, var(--actor-underlay) 8%, transparent),
+			color-mix(in srgb, var(--actor-underlay) 35%, transparent)
+		),
+		url(../images/paperbg.webp);
+}
+
 .window-app:not(.story-tag-window) .window-content {
     position: relative;
     --window-content-underlay: transparent;
@@ -246,4 +266,25 @@ section.clue-data-block {
 
 .window-app:not(.story-tag-window) > header {
     background-color: var(--actor-underlay);
+}
+
+.sheet .tabs .item:not(.active), .short-description, .separator-icon {
+    color: var(--extra-white);
+}
+.separator-icon {
+    font-size: 1.5em;
+}
+
+.tab-content .section-header, .bio-section {
+    color: var(--mythos-text);
+}
+
+input.logos-name {
+    color: var(--mythos-text);
+    text-shadow: 0px 2px 4px var(--logos-orange);
+}
+
+input.mythos-name {
+    color: var(--mythos-text);
+    text-align: right;
 }
