@@ -242,9 +242,9 @@ function renderTexts(output, texts) {
     "over", "under", "into", "onto", "about", "after", "before", "between",
     "through", "during", "against", "within", "across", "behind", "beyond",
     // pronouns / determiners often used as short fragments
-    "i", "me", "my", "mine", "you", "your", "yours", "he", "him", "his",
-    "she", "her", "hers", "it", "its", "we", "us", "our", "ours", "they",
-    "them", "their", "theirs", "this", "that", "these", "those"
+    "my", "mine", "your", "yours", "his",
+    "hers", "its", "our", "ours",
+    "their", "theirs"
   ]);
   const isFunctionWordOnlySegment = (text) => {
     const tokens = text.toLowerCase().match(/[a-z']+/g) || [];
