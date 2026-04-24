@@ -1,0 +1,22 @@
+{
+  "name": "city-of-mist-css",
+  "version": "1.0.0",
+  "description": "Build pipeline for Foundry module scripts.",
+  "type": "module",
+  "main": "scripts/main.js",
+  "scripts": {
+    "build": "node build/build.mjs",
+    "build:watch": "node --watch build/build.mjs",
+    "clean": "rm -f scripts/main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/c7d5a6/city-of-mist-css.git"
+  },
+  "keywords": [],
+  "author": "",
+  "devDependencies": {
+    "colorthief": "^3.3.1",
+    "esbuild": "^0.28.0"
+  }
+}

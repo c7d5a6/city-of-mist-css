@@ -28,7 +28,8 @@
   "styles": [
     "styles/style.css"
   ],
-  "scripts": [
+  "esmodules": [
+    "scripts/main.js",
     "scripts/renderThemeName.js"
   ]
 }

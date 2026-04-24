@@ -219,4 +219,31 @@ section.clue-data-block {
     border-radius: 6px;
 }
 
+.window-app:not(.story-tag-window) .window-content {
+    position: relative;
+    --window-content-underlay: transparent;
+}
 
+.window-app:not(.story-tag-window) .window-content > * {
+    position: relative;
+    z-index: 1;
+}
+
+.window-app:not(.story-tag-window) .window-content::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-color: var(--actor-underlay);
+    -webkit-mask-image: url(../images/paperbg-dark.webp);
+    -webkit-mask-size: 300%;
+    -webkit-mask-repeat: repeat;
+    mask-image: url(../images/paperbg-dark.webp);
+    mask-size: 300%;
+    mask-repeat: repeat;
+}
+
+.window-app:not(.story-tag-window) > header {
+    background-color: var(--actor-underlay);
+}

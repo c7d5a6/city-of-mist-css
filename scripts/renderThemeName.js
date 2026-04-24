@@ -1,4 +1,98 @@
+import { getSheetUnderlayColorsFromImageUrl } from "./main.js";
+
+const LOG_PREFIX = "[city-of-mist-css/renderThemeName]";
+
 console.log("renderTHeme name start")
+
+function whenImageReady(img) {
+  if (img.complete && img.naturalWidth > 0) {
+    console.debug(LOG_PREFIX, "profile image already loaded");
+    return Promise.resolve();
+  }
+
+  console.debug(LOG_PREFIX, "waiting for profile image load");
+
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      img.removeEventListener("load", onLoad);
+      img.removeEventListener("error", onError);
+    };
+    const onLoad = () => {
+      cleanup();
+      console.debug(LOG_PREFIX, "profile image load event received");
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      console.warn(LOG_PREFIX, "profile image load event failed");
+      reject(new Error("Profile image failed to load."));
+    };
+
+    img.addEventListener("load", onLoad, { once: true });
+    img.addEventListener("error", onError, { once: true });
+  });
+}
+
+async function applyVibrantBackgroundFromProfileImage(root) {
+  console.debug(LOG_PREFIX, "applyVibrantBackgroundFromProfileImage start");
+  const img = root.querySelector("img.profile-img");
+  if (!img) {
+    console.debug(LOG_PREFIX, "no .profile-img found in sheet root");
+    return;
+  }
+
+  const parent = img.parentElement;
+  if (!parent) {
+    console.debug(LOG_PREFIX, "profile image has no parent element");
+    return;
+  }
+
+  try {
+    const src = img.currentSrc || img.src;
+    console.debug(LOG_PREFIX, "profile image found", {
+      src,
+      className: img.className
+    });
+    await whenImageReady(img);
+    const colors = await getSheetUnderlayColorsFromImageUrl(src);
+    if (!colors?.vibrant?.hex || !colors?.darkMuted?.hex) {
+      console.debug(LOG_PREFIX, "sheet underlay colors not resolved");
+      return;
+    }
+
+    parent.style.backgroundColor = colors.vibrant.hex;
+
+    const actor = root.closest(".actor") || root.querySelector(".actor");
+    if (actor) {
+      actor.style.backgroundColor = colors.vibrant.hex;
+      actor.style.backgroundImage = "none";
+      actor.style.setProperty("--actor-underlay", colors.darkMuted.hex);
+      console.debug(LOG_PREFIX, "applied actor vibrant underlay", {
+        hex: colors.vibrant.hex
+      });
+    } else {
+      console.debug(LOG_PREFIX, "no .actor found for vibrant underlay");
+    }
+
+    const windowContent = root.closest(".window-content") || root.querySelector(".window-content");
+    if (windowContent) {
+      windowContent.style.backgroundImage = "none";
+      console.debug(LOG_PREFIX, "applied window-content dark-muted background", {
+        hex: colors.darkMuted.hex
+      });
+    } else {
+      console.debug(LOG_PREFIX, "no .window-content found for dark-muted background");
+    }
+
+    console.debug(LOG_PREFIX, "applied profile parent vibrant background", {
+      hex: colors.vibrant.hex,
+      rgb: colors.vibrant.rgb,
+      textColor: colors.vibrant.textColor
+    });
+  } catch (error) {
+    console.warn(LOG_PREFIX, "unable to set vibrant profile background", error);
+  }
+}
 
 function getBreakIndexes(words) {
   const breaks = [];
@@ -363,9 +457,15 @@ function renderTexts(output, texts) {
 
 Hooks.on("renderCityCharacterSheet", (app, html) => {
   const isLocked = !!app.actor?.system?.locked;
-  if (!isLocked) return;
+  if (!isLocked) {
+    console.debug(LOG_PREFIX, "sheet render skipped: actor not locked");
+    return;
+  }
 
-  console.log("renderCityCharacter")
+  console.debug(LOG_PREFIX, "renderCityCharacterSheet start", {
+    actorId: app.actor?.id,
+    actorName: app.actor?.name
+  });
 
   html.find("textarea.theme-name-input:disabled").each((_, textarea) => {
     const $ta = $(textarea);
@@ -376,6 +476,10 @@ Hooks.on("renderCityCharacterSheet", (app, html) => {
 
     const rawText = ($ta.val() ?? "").toString().trim();
     const parts = splitBalancedText(rawText);
+    console.debug(LOG_PREFIX, "rendering locked theme name", {
+      rawText,
+      partsCount: parts.length
+    });
 
     // Keep original element in DOM for form consistency, but hide it
     $ta.css("display", "none");
@@ -402,4 +506,6 @@ Hooks.on("renderCityCharacterSheet", (app, html) => {
     // Put it right after textarea
     $ta.after($display);
   });
+
+  applyVibrantBackgroundFromProfileImage(html[0]);
 });
