@@ -507,5 +507,7 @@ Hooks.on("renderCityCharacterSheet", (app, html) => {
     $ta.after($display);
   });
 
-  applyVibrantBackgroundFromProfileImage(html[0]);
+  queueMicrotask(() => {
+    void applyVibrantBackgroundFromProfileImage(html[0]);
+  });
 });
