@@ -229,7 +229,7 @@ section.juice-data-block {
 		url(../images/paperbg.webp);
 }
 
-section.cluejournal-data-block {
+section.clue-data-block {
 	background: linear-gradient(
 			to right,
 			color-mix(in srgb, var(--actor-underlay) 15%, transparent),
@@ -238,6 +238,8 @@ section.cluejournal-data-block {
 		),
 		url(../images/paperbg.webp);
 }
+
+
 
 .window-app:not(.story-tag-window) .window-content {
     position: relative;
@@ -291,4 +293,13 @@ input.mythos-name {
 
 header#basic-info .image-block {
     min-width: 140px;
+}
+
+section.cluejournal-data-block {
+    background-image: url(../images/yellow.jpg);
+}
+
+hr + section.cluejournal-data-block {
+    background-image: url(../images/yellow-upper.webp);
+    padding-top: 32px;
 }
