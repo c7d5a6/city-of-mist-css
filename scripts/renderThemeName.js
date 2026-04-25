@@ -1,8 +1,71 @@
 import { getSheetUnderlayColorsFromImageUrl } from "./main.js";
 
 const LOG_PREFIX = "[city-of-mist-css/renderThemeName]";
+const colorRequestByRoot = new WeakMap();
 
 console.log("renderTHeme name start")
+
+function normalizeHexChannel(channel) {
+  return Math.max(0, Math.min(255, channel))
+    .toString(16)
+    .padStart(2, "0");
+}
+
+function toHexColorString(value) {
+  if (typeof value !== "string") return null;
+  const input = value.trim().toLowerCase();
+  if (!input) return null;
+
+  const shortHexMatch = input.match(/^#([0-9a-f]{3})$/i);
+  if (shortHexMatch) {
+    const [r, g, b] = shortHexMatch[1].split("");
+    return `#${r}${r}${g}${g}${b}${b}`;
+  }
+
+  const fullHexMatch = input.match(/^#([0-9a-f]{6})$/i);
+  if (fullHexMatch) return `#${fullHexMatch[1]}`;
+
+  const rgbMatch = input.match(
+    /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*([0-9.]+))?\s*\)$/
+  );
+  if (rgbMatch) {
+    const r = Number(rgbMatch[1]);
+    const g = Number(rgbMatch[2]);
+    const b = Number(rgbMatch[3]);
+    if ([r, g, b].some((channel) => Number.isNaN(channel))) return null;
+    return `#${normalizeHexChannel(r)}${normalizeHexChannel(g)}${normalizeHexChannel(b)}`;
+  }
+
+  return null;
+}
+
+function setStyleIfChanged(element, propertyName, value) {
+  if (!element) return false;
+  const currentValue = element.style.getPropertyValue(propertyName).trim();
+  const normalizedCurrent = toHexColorString(currentValue);
+  const normalizedNext = toHexColorString(value);
+  const isEqual = normalizedCurrent && normalizedNext
+    ? normalizedCurrent === normalizedNext
+    : currentValue === value;
+
+  if (isEqual) {
+    return {
+      changed: false,
+      reason: "same-value",
+      previous: currentValue,
+      next: value,
+    };
+  }
+  element.style.setProperty(propertyName, value);
+  return {
+    changed: true,
+    reason: currentValue ? "value-changed" : "value-was-empty",
+    previous: currentValue,
+    next: value,
+    normalizedPrevious: normalizedCurrent,
+    normalizedNext,
+  };
+}
 
 function whenImageReady(img) {
   if (img.complete && img.naturalWidth > 0) {
@@ -33,7 +96,7 @@ function whenImageReady(img) {
   });
 }
 
-async function applyVibrantBackgroundFromProfileImage(root) {
+function applyVibrantBackgroundFromProfileImage(root) {
   console.debug(LOG_PREFIX, "applyVibrantBackgroundFromProfileImage start");
   const img = root.querySelector("img.profile-img");
   if (!img) {
@@ -42,47 +105,74 @@ async function applyVibrantBackgroundFromProfileImage(root) {
   }
 
   try {
+    const requestId = (colorRequestByRoot.get(root) ?? 0) + 1;
+    colorRequestByRoot.set(root, requestId);
     const src = img.currentSrc || img.src;
     console.debug(LOG_PREFIX, "profile image found", {
       src,
       className: img.className
     });
-    await whenImageReady(img);
-    const colors = await getSheetUnderlayColorsFromImageUrl(src);
-    if (!colors?.vibrant?.hex || !colors?.darkMuted?.hex) {
-      console.debug(LOG_PREFIX, "sheet underlay colors not resolved");
-      return;
-    }
+    whenImageReady(img)
+      .then(() => getSheetUnderlayColorsFromImageUrl(src))
+      .then((colors) => {
+        if (colorRequestByRoot.get(root) !== requestId) {
+          console.debug(LOG_PREFIX, "skipping stale color result");
+          return;
+        }
 
-    const actor = root.closest(".actor") || root.querySelector(".actor");
-    if (actor) {
-      actor.style.backgroundColor = colors.vibrant.hex;
-      actor.style.backgroundImage = "none";
-      actor.style.setProperty("--actor-underlay", colors.darkMuted.hex);
-      console.debug(LOG_PREFIX, "applied actor vibrant underlay", {
-        hex: colors.vibrant.hex
+        if (!colors?.vibrant?.hex || !colors?.darkMuted?.hex) {
+          console.debug(LOG_PREFIX, "sheet underlay colors not resolved");
+          return;
+        }
+
+        const actor = root.closest(".actor") || root.querySelector(".actor");
+        if (actor) {
+          const actorBgResult = setStyleIfChanged(
+            actor,
+            "background-color",
+            colors.vibrant.hex
+          );
+          const underlayResult = setStyleIfChanged(
+            actor,
+            "--actor-underlay",
+            colors.darkMuted.hex
+          );
+          if (actorBgResult.changed || underlayResult.changed) {
+            console.debug(LOG_PREFIX, "applied actor style updates", {
+              hex: colors.vibrant.hex
+            });
+            console.debug(LOG_PREFIX, "actor background-color update", actorBgResult);
+            console.debug(LOG_PREFIX, "actor --actor-underlay update", underlayResult);
+          } else {
+            console.debug(LOG_PREFIX, "actor styles skipped (already up to date)", {
+              backgroundColor: actorBgResult,
+              actorUnderlay: underlayResult,
+            });
+          }
+        } else {
+          console.debug(LOG_PREFIX, "no .actor found for vibrant underlay");
+        }
+
+        // const windowContent = root.closest(".window-content") || root.querySelector(".window-content");
+        // if (windowContent) {
+        //   console.debug(LOG_PREFIX, "window-content found for dark-muted background", {
+        //     hex: colors.darkMuted.hex
+        //   });
+        // } else {
+        //   console.debug(LOG_PREFIX, "no .window-content found for dark-muted background");
+        // }
+
+        // console.debug(LOG_PREFIX, "applied profile parent vibrant background", {
+        //   hex: colors.vibrant.hex,
+        //   rgb: colors.vibrant.rgb,
+        //   textColor: colors.vibrant.textColor
+        // });
+      })
+      .catch((error) => {
+        console.warn(LOG_PREFIX, "unable to set vibrant profile background", error);
       });
-    } else {
-      console.debug(LOG_PREFIX, "no .actor found for vibrant underlay");
-    }
-
-    const windowContent = root.closest(".window-content") || root.querySelector(".window-content");
-    if (windowContent) {
-      windowContent.style.backgroundImage = "none";
-      console.debug(LOG_PREFIX, "applied window-content dark-muted background", {
-        hex: colors.darkMuted.hex
-      });
-    } else {
-      console.debug(LOG_PREFIX, "no .window-content found for dark-muted background");
-    }
-
-    console.debug(LOG_PREFIX, "applied profile parent vibrant background", {
-      hex: colors.vibrant.hex,
-      rgb: colors.vibrant.rgb,
-      textColor: colors.vibrant.textColor
-    });
   } catch (error) {
-    console.warn(LOG_PREFIX, "unable to set vibrant profile background", error);
+    console.warn(LOG_PREFIX, "failed to start profile color extraction", error);
   }
 }
 

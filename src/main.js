@@ -25,7 +25,7 @@ const LIGHT_VIVID_FALLBACK = {
 };
 
 function mergeSampleOpts(extractionOptions = {}) {
-  return { quality: PALETTE_SAMPLE_QUALITY, ...extractionOptions };
+  return { quality: PALETTE_SAMPLE_QUALITY, worker: true, ...extractionOptions };
 }
 
 export function dummyFunction() {

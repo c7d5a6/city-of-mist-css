@@ -1160,7 +1160,7 @@ var LIGHT_VIVID_FALLBACK = {
   proportion: 1
 };
 function mergeSampleOpts(extractionOptions = {}) {
-  return { quality: PALETTE_SAMPLE_QUALITY, ...extractionOptions };
+  return { quality: PALETTE_SAMPLE_QUALITY, worker: true, ...extractionOptions };
 }
 function dummyFunction() {
   return "dummy";
