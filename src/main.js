@@ -287,7 +287,18 @@ export function clampActorVibrantValue(colorPayload) {
 }
 
 export async function getSheetUnderlayColorsFromImageUrl(imageUrl) {
-  const { dark, light } = await bestPairFromImageUrl(imageUrl);
+  const img = await loadImageFromUrl(imageUrl);
+  return getSheetUnderlayColorsFromImageElement(img);
+}
+
+export async function getSheetUnderlayColorsFromImageElement(
+  imgElement,
+  extractionOptions = {}
+) {
+  const { dark, light } = await getBestDarkLightPairFromImage(
+    imgElement,
+    extractionOptions
+  );
   return {
     vibrant: clampActorVibrantValue(light),
     darkMuted: clampActorUnderlayValue(dark),

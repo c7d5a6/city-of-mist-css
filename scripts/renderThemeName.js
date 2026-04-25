@@ -1,4 +1,4 @@
-import { getSheetUnderlayColorsFromImageUrl } from "./main.js";
+import { getSheetUnderlayColorsFromImageElement } from "./main.js";
 
 const LOG_PREFIX = "[city-of-mist-css/renderThemeName]";
 const colorRequestByRoot = new WeakMap();
@@ -113,7 +113,7 @@ function applyVibrantBackgroundFromProfileImage(root) {
       className: img.className
     });
     whenImageReady(img)
-      .then(() => getSheetUnderlayColorsFromImageUrl(src))
+      .then(() => getSheetUnderlayColorsFromImageElement(img))
       .then((colors) => {
         if (colorRequestByRoot.get(root) !== requestId) {
           console.debug(LOG_PREFIX, "skipping stale color result");

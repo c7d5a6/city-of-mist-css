@@ -288,3 +288,7 @@ input.mythos-name {
     color: var(--mythos-text);
     text-align: right;
 }
+
+header#basic-info .image-block {
+    min-width: 140px;
+}

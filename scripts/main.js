@@ -1372,7 +1372,14 @@ function clampActorVibrantValue(colorPayload) {
   return clampHsvValue(colorPayload, VIBRANT_FLOOR_RGB, false);
 }
 async function getSheetUnderlayColorsFromImageUrl(imageUrl) {
-  const { dark, light } = await bestPairFromImageUrl(imageUrl);
+  const img = await loadImageFromUrl(imageUrl);
+  return getSheetUnderlayColorsFromImageElement(img);
+}
+async function getSheetUnderlayColorsFromImageElement(imgElement, extractionOptions = {}) {
+  const { dark, light } = await getBestDarkLightPairFromImage(
+    imgElement,
+    extractionOptions
+  );
   return {
     vibrant: clampActorVibrantValue(light),
     darkMuted: clampActorUnderlayValue(dark)
@@ -1387,6 +1394,7 @@ export {
   getDarkColorsFromPalette,
   getDominantColorFromImage,
   getLightColorsFromPalette,
+  getSheetUnderlayColorsFromImageElement,
   getSheetUnderlayColorsFromImageUrl,
   getVibrantColorFromImageUrl,
   rateDarkLightPair
